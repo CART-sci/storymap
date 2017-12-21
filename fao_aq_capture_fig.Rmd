@@ -87,8 +87,18 @@ data_tween <- tween_elements(data, "time", "id", "ease", nframes = 100) %>%
 tween_plot <- ggplot(data_tween, 
                      aes(x = x, y = y, frame = .frame, color = id)) +
   geom_path(aes(cumulative = T, group = id), size = 1, show.legend = F) +
+  xlab("") +
   ylab("Seafood Production (million tonnes)") +
-  theme_hc(bgcolor = "darkunica")
+  scale_y_continuous(breaks = seq(0, 125, by = 25)) +
+  ylim(0, 125)+
+  theme_hc(bgcolor = "darkunica") +
+  theme(axis.title.y = element_text(color="white", face="bold", size=14),
+        axis.text.y = element_text(color = "white", size=10),
+        axis.text.x = element_text(color = "white", size = 10)) +
+annotate(geom = "text", x = 1994, y = 34, label = "Aquaculture", 
+         cex = 6, angle = 24, fontface = "bold", color = "#F8766D") +
+annotate(geom = "text", x = 1994, y = 103, label = "Wild Capture", 
+         cex = 6, fontface = "bold", color = "#00BFC4")
 
 gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif")
 ```
