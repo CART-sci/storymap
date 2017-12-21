@@ -1,0 +1,95 @@
+---
+title: "FAO Global Capture Figure"
+author: "Jamie Afflerbach"
+date: "12/20/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(gganimate)
+library(tweenr)
+library(tidyverse)
+library(ggthemes)
+```
+
+# Load Data
+
+```{r data}
+
+#this data identifies aquaculture vs wild capture prodcution
+source <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_PRODUCTION_SOURCE.csv")
+
+#this is the time series data
+fao <- read_csv("data/GlobalProuction_2017.1.1/TS_FI_PRODUCTION.csv")
+
+```
+
+# Calculate annual capture and aquaculture production
+
+```{r}
+
+data <- fao %>%
+  mutate(source = 
+           case_when(
+             Source %in% c(1,2,3,5) ~ "Aquaculture",
+             Source == 4 ~ "Wild Capture"
+           )) %>%
+  mutate(source = as.factor(source)) %>% #doing this for tweenr...still don't know why we need to
+  group_by(source, Year) %>%
+  summarize(tons = sum(Quantity, na.rm = T)/1000000) %>%
+  filter(Year > 1989) %>%
+  mutate(ease = "linear",
+         x = Year) %>%
+  rename(y = tons,
+         id = source,
+         time = Year)
+
+```
+
+# Static ggplot
+
+```{r}
+
+static_plot <- ggplot(data, aes(x = x, y = y)) +
+  geom_line(aes(color = id), show.legend = F) +
+  labs(x = "Year",
+       y = "Seafood Production (million tonnes)") +
+  theme_wsj()
+
+static_plot
+```
+
+# Animated 
+
+```{r}
+
+dynam_plot <- ggplot(data, aes(x = x, y = y, cumulative = TRUE, frame = time)) +
+  geom_line(aes(color = id), show.legend = F) +
+  labs(x = "Year",
+       y = "Seafood Production (million tonnes)") +
+  theme_wsj()
+
+gganimate(dynam_plot, title_frame = F)
+
+```
+
+## With `tweenr`
+
+```{r}
+
+data_tween <- tween_elements(data, "time", "id", "ease", nframes = 100) %>%
+  mutate(year = round(time), id = .group) %>%
+  left_join(data, by=c("id","time", "y")) %>%
+  select(-x.y) %>%
+  rename(x = x.x)
+
+tween_plot <- ggplot(data_tween, 
+                     aes(x = x, y = y, frame = .frame, color = id)) +
+  geom_path(aes(cumulative = T, group = id), size = 1, show.legend = F) +
+  ylab("Seafood Production (million tonnes)") +
+  theme_hc(bgcolor = "darkunica")
+
+gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif")
+```
+
