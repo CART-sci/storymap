@@ -11,6 +11,7 @@ library(gganimate)
 library(tweenr)
 library(tidyverse)
 library(ggthemes)
+library(zoo)
 ```
 
 # Load Data
@@ -20,25 +21,66 @@ library(ggthemes)
 #this data identifies aquaculture vs wild capture prodcution
 source <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_PRODUCTION_SOURCE.csv")
 
-#this is the time series data
+#this is the time series data for global production (does not discern b/w seafood and nonseafood)
 fao <- read_csv("data/GlobalProuction_2017.1.1/TS_FI_PRODUCTION.csv")
 
+## species info
+spp <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_SPECIES_GROUPS.csv") %>%
+  rename(Species = `3Alpha_Code`)
+
+## read in the seafood data queried from FAOSTAT and get totals per year
+seafood <- read_csv("data/FAOSTAT_data_12-21-2017.csv") %>%
+  group_by(Year) %>%
+  summarize(sf_tons = sum(Value))
+
 ```
+
 
 # Calculate annual capture and aquaculture production
 
 ```{r}
 
 data <- fao %>%
+  left_join(spp) %>%
   mutate(source = 
            case_when(
              Source %in% c(1,2,3,5) ~ "Aquaculture",
-             Source == 4 ~ "Wild Capture"
+             Source == 4 ~ "Wild_Capture"
            )) %>%
+  filter(Major_Group != "PLANTAE AQUATICAE") %>% #removing aquatic plants
   mutate(source = as.factor(source)) %>% #doing this for tweenr...still don't know why we need to
   group_by(source, Year) %>%
   summarize(tons = sum(Quantity, na.rm = T)/1000000) %>%
   filter(Year > 1989) %>%
+  spread(source, tons) %>%
+  left_join(seafood, by = "Year") %>%
+  mutate(Wild_for_food = (sf_tons/1000000) - Aquaculture) %>% #subtract aquaculture from seafood series to get wild capture for seafood
+  filter(!is.na(Wild_for_food)) %>%
+  select(Year, Aquaculture, Wild_for_food)
+
+DT::datatable
+
+```
+
+```{r}
+
+#forecast forward to 2025
+#Projected 1% of growth in wild capture by 2025
+#projected 39% for aquaculture
+
+yrs <- data.frame(Year = 2014:2024,
+                  Aquaculture = NA,
+                  Wild_for_food = NA)
+
+data_2025 <- data.frame(Year = 2025,
+                        Aquaculture = 1.39*last(data$Aquaculture),
+                        Wild_for_food = 1.01*last(data$Wild_for_food))
+
+plot_data <- data %>%
+  rbind(yrs, data_2025) %>%
+  mutate(Aquaculture = na.approx(.$Aquaculture),
+         Wild_for_food = na.approx(.$Wild_for_food)) %>%
+  gather(source, tons, Aquaculture, Wild_for_food)%>%
   mutate(ease = "linear",
          x = Year) %>%
   rename(y = tons,
@@ -51,11 +93,11 @@ data <- fao %>%
 
 ```{r}
 
-static_plot <- ggplot(data, aes(x = x, y = y)) +
-  geom_line(aes(color = id), show.legend = F) +
+static_plot <- ggplot(plot_data, aes(x = x, y = y)) +
+  geom_line(aes(color = id, linetype = period), show.legend = F) +
   labs(x = "Year",
        y = "Seafood Production (million tonnes)") +
-  theme_wsj()
+  theme_hc(bgcolor = "darkunica")
 
 static_plot
 ```
@@ -64,11 +106,11 @@ static_plot
 
 ```{r}
 
-dynam_plot <- ggplot(data, aes(x = x, y = y, cumulative = TRUE, frame = time)) +
-  geom_line(aes(color = id), show.legend = F) +
+dynam_plot <- ggplot(plot_data, aes(x = x, y = y, cumulative = TRUE, frame = time)) +
+  geom_line(aes(color = id, linetype = period), show.legend = F) +
   labs(x = "Year",
        y = "Seafood Production (million tonnes)") +
-  theme_wsj()
+  theme_hc(bgcolor = "darkunica")
 
 gganimate(dynam_plot, title_frame = F)
 
@@ -78,27 +120,26 @@ gganimate(dynam_plot, title_frame = F)
 
 ```{r}
 
-data_tween <- tween_elements(data, "time", "id", "ease", nframes = 100) %>%
+data_tween <- plot_data %>%
+  tween_elements(., "time", "id", "ease", nframes = 100) %>%
   mutate(year = round(time), id = .group) %>%
-  left_join(data, by=c("id","time", "y")) %>%
-  select(-x.y) %>%
-  rename(x = x.x)
+  left_join(plot_data) %>%
+  mutate(period = ifelse(time < 2018, "current", "projected"))
 
-tween_plot <- ggplot(data_tween, 
-                     aes(x = x, y = y, frame = .frame, color = id)) +
-  geom_path(aes(cumulative = T, group = id), size = 1, show.legend = F) +
+tween_plot <- ggplot(data_tween, aes(x = x, y = y, frame = .frame, color = id)) +
+  geom_path(aes(group = id, cumulative = T), size = 1, show.legend = F) +
   xlab("") +
   ylab("Seafood Production (million tonnes)") +
-  scale_y_continuous(breaks = seq(0, 125, by = 25)) +
-  ylim(0, 125)+
+  scale_y_continuous(breaks = seq(0, 100, by = 25)) +
+  ylim(0, 100) +
   theme_hc(bgcolor = "darkunica") +
   theme(axis.title.y = element_text(color="white", face="bold", size=14),
         axis.text.y = element_text(color = "white", size=10),
         axis.text.x = element_text(color = "white", size = 10)) +
-annotate(geom = "text", x = 1994, y = 34, label = "Aquaculture", 
-         cex = 6, angle = 24, fontface = "bold", color = "#F8766D") +
-annotate(geom = "text", x = 1994, y = 103, label = "Wild Capture", 
-         cex = 6, fontface = "bold", color = "#00BFC4")
+annotate(geom = "text", x = 1994, y = 29, label = "Aquaculture", 
+         cex = 5.5, angle = 22, fontface = "bold", color = "#F8766D") +
+annotate(geom = "text", x = 1994, y = 70, label = "Wild Capture", 
+         cex = 5.5, fontface = "bold", color = "#00BFC4")
 
 gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif")
 ```
