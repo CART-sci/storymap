@@ -9,9 +9,9 @@ output: html_document
 library(ggplot2)
 library(gganimate)
 library(tweenr)
-library(tidyverse)
 library(ggthemes)
 library(zoo)
+library(tidyverse)
 ```
 
 # Load Data
@@ -26,7 +26,7 @@ fao <- read_csv("data/GlobalProuction_2017.1.1/TS_FI_PRODUCTION.csv")
 
 ## species info
 spp <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_SPECIES_GROUPS.csv") %>%
-  rename(Species = `3Alpha_Code`)
+  mutate(Species = `3Alpha_Code`) 
 
 ## read in the seafood data queried from FAOSTAT and get totals per year
 seafood <- read_csv("data/FAOSTAT_data_12-21-2017.csv") %>%
@@ -93,11 +93,11 @@ plot_data <- data %>%
 
 ```{r}
 
-static_plot <- ggplot(plot_data, aes(x = x, y = y)) +
-  geom_line(aes(color = id, linetype = period), show.legend = F) +
+static_plot <- ggplot(plot_data, aes(x = time, y = y)) +
+  geom_line(aes(color = id), show.legend = F) +
   labs(x = "Year",
        y = "Seafood Production (million tonnes)") +
-  theme_hc(bgcolor = "darkunica")
+  theme_minimal()
 
 static_plot
 ```
@@ -107,7 +107,7 @@ static_plot
 ```{r}
 
 dynam_plot <- ggplot(plot_data, aes(x = x, y = y, cumulative = TRUE, frame = time)) +
-  geom_line(aes(color = id, linetype = period), show.legend = F) +
+  geom_line(aes(color = id), show.legend = F) +
   labs(x = "Year",
        y = "Seafood Production (million tonnes)") +
   theme_hc(bgcolor = "darkunica")
@@ -131,15 +131,19 @@ tween_plot <- ggplot(data_tween, aes(x = x, y = y, frame = .frame, color = id)) 
   xlab("") +
   ylab("Seafood Production (million tonnes)") +
   scale_y_continuous(breaks = seq(0, 100, by = 25)) +
+  scale_color_manual(values = c("#24757A", "#7FBAC0")) +
   ylim(0, 100) +
-  theme_hc(bgcolor = "darkunica") +
-  theme(axis.title.y = element_text(color="white", face="bold", size=14),
-        axis.text.y = element_text(color = "white", size=10),
-        axis.text.x = element_text(color = "white", size = 10)) +
-annotate(geom = "text", x = 1994, y = 29, label = "Aquaculture", 
-         cex = 5.5, angle = 22, fontface = "bold", color = "#F8766D") +
-annotate(geom = "text", x = 1994, y = 70, label = "Wild Capture", 
-         cex = 5.5, fontface = "bold", color = "#00BFC4")
+  theme_hc() +
+  theme(axis.title.y = element_text(size=12),
+        axis.text.y = element_text( size=10),
+        axis.text.x = element_text(size = 10)) +
+  annotate(geom = "text", x = 1994, y = 29, label = "Aquaculture", 
+         cex = 5.5, angle = 22, fontface = "bold", color = "#24757A") +
+  annotate(geom = "text", x = 1994, y = 70, label = "Wild Capture", 
+         cex = 5.5, fontface = "bold", color = "#7FBAC0") +
+  geom_segment(aes(x=2015,xend=2020, y=88, yend=88),arrow=arrow(length=unit(0.2,"cm")),show.legend=F, color = "darkgray") +
+  annotate(geom = "text", x = 2013.8, y = 88, label = "Estimated \nfuture growth", color= "darkgray", fontface = "bold", cex = 4, angle = 90) +
+  geom_vline(xintercept=c(2015), linetype="dotted"); tween_plot
 
 gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif")
 ```
