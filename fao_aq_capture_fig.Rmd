@@ -118,7 +118,7 @@ gganimate(dynam_plot, title_frame = F)
 
 ## With `tweenr`
 
-```{r}
+```{r, fig.width = 6, fig.height = 6}
 
 data_tween <- plot_data %>%
   tween_elements(., "time", "id", "ease", nframes = 100) %>%
@@ -134,17 +134,17 @@ tween_plot <- ggplot(data_tween, aes(x = x, y = y, frame = .frame, color = id)) 
   scale_color_manual(values = c("#24757A", "#7FBAC0")) +
   ylim(0, 100) +
   theme_hc() +
-  theme(axis.title.y = element_text(size=12),
-        axis.text.y = element_text( size=10),
-        axis.text.x = element_text(size = 10)) +
+  theme(axis.title.y = element_text(size=14),
+        axis.text.y = element_text( size=12),
+        axis.text.x = element_text(size = 12)) +
   annotate(geom = "text", x = 1994, y = 29, label = "Aquaculture", 
-         cex = 5.5, angle = 22, fontface = "bold", color = "#24757A") +
+         cex = 6, angle = 22, fontface = "bold", color = "#24757A") +
   annotate(geom = "text", x = 1994, y = 70, label = "Wild Capture", 
-         cex = 5.5, fontface = "bold", color = "#7FBAC0") +
+         cex = 6, fontface = "bold", color = "#7FBAC0") +
   geom_segment(aes(x=2015,xend=2020, y=88, yend=88),arrow=arrow(length=unit(0.2,"cm")),show.legend=F, color = "darkgray") +
-  annotate(geom = "text", x = 2013.8, y = 88, label = "Estimated \nfuture growth", color= "darkgray", fontface = "bold", cex = 4, angle = 90) +
+  annotate(geom = "text", x = 2013, y = 88, label = "Estimated \nfuture growth", color= "darkgray", fontface = "bold", cex = 4.5, angle = 90) +
   geom_vline(xintercept=c(2015), linetype="dotted"); tween_plot
 
-gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif")
+gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif", ani.width = 800, ani.height = 500)
 ```
 
