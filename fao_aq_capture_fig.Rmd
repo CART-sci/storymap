@@ -1,11 +1,24 @@
 ---
 title: "FAO Global Capture Figure"
 author: "Jamie Afflerbach"
-date: "12/20/2017"
-output: html_document
+date: "1/18/2018"
+output: 
+  html_document:
+    code_folding: show
+    toc: true
+    toc_depth: 3
+    toc_float: yes
+    number_sections: false
+    theme: cerulean
+    highlight: haddock
 ---
 
-```{r setup, include=FALSE}
+This script makes an animated .gif of seafood growth overtime. Specifically, seafood from wild-capture (caught in the open ocean) and farmed seafood. This will be incorporated in the [CART](http://www.cart-sci.org/) storymap.
+
+```{r setup, message=F, warning=F}
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
 library(ggplot2)
 library(gganimate)
 library(tweenr)
@@ -14,11 +27,13 @@ library(zoo)
 library(tidyverse)
 ```
 
-# Load Data
+# Data wrangling
+
+I start with data downloaded from [FAO's website](http://www.fao.org/fishery/statistics/global-production/en), specifically the "Total Production" dataset CSV. One problem with using this dataset to understand how seafood production from Wild Capture and Aquaculture has grown over time, is that this data does not differentiate between fish caught for consumption versus non-consumption (e.g. fish used for feed). 
 
 ```{r data}
 
-#this data identifies aquaculture vs wild capture prodcution
+#this data identifies aquaculture vs wild capture production
 source <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_PRODUCTION_SOURCE.csv")
 
 #this is the time series data for global production (does not discern b/w seafood and nonseafood)
@@ -27,6 +42,18 @@ fao <- read_csv("data/GlobalProuction_2017.1.1/TS_FI_PRODUCTION.csv")
 ## species info
 spp <- read_csv("data/GlobalProuction_2017.1.1/CL_FI_SPECIES_GROUPS.csv") %>%
   mutate(Species = `3Alpha_Code`) 
+```
+
+By using a second dataset on global food supply of fish/seafood, I can calculate the amount of fish caught for consumption. Why not only use this dataset? Because it does not differentiate between wild capture and aquaculture. 
+
+If you're interested in the data I used, here is a screenshot of the manual query on [FAOSTAT](http://www.fao.org/faostat/en/#data/CL).
+
+![](img/faostat_query.png)
+
+I am still hopeful that someone, somewhere will create an FAO R package that lets me query all of their data for what I want. 
+
+
+```{r}
 
 ## read in the seafood data queried from FAOSTAT and get totals per year
 seafood <- read_csv("data/FAOSTAT_data_12-21-2017.csv") %>%
@@ -36,7 +63,10 @@ seafood <- read_csv("data/FAOSTAT_data_12-21-2017.csv") %>%
 ```
 
 
-# Calculate annual capture and aquaculture production
+## Calculate annual capture and aquaculture production
+
+Since no dataset from FAO has exactly what I want, I can take the `seafood` dataset, calculate total production (tons) per year, and then remove the total aquaculture production each year calculated from the `fao` dataset. Then I have wild capture seafood per year (from the `seafood` dataset), and aquaculture prodution per year (from the `fao` dataset). This isn't perfect by any means and assumes that all aquaculture in these datasets is being used for human consumption (although I do remove aquatic plants from the Aquaculture dataset).
+
 
 ```{r}
 
@@ -48,19 +78,21 @@ data <- fao %>%
              Source == 4 ~ "Wild_Capture"
            )) %>%
   filter(Major_Group != "PLANTAE AQUATICAE") %>% #removing aquatic plants
-  mutate(source = as.factor(source)) %>% #doing this for tweenr...still don't know why we need to
+  mutate(source = as.factor(source)) %>%         #doing this for tweenr...still don't know why we need to
   group_by(source, Year) %>%
   summarize(tons = sum(Quantity, na.rm = T)/1000000) %>%
-  filter(Year > 1989) %>%
+  filter(Year > 1989) %>%                        #only interested in showing 1990 onwards
   spread(source, tons) %>%
   left_join(seafood, by = "Year") %>%
   mutate(Wild_for_food = (sf_tons/1000000) - Aquaculture) %>% #subtract aquaculture from seafood series to get wild capture for seafood
   filter(!is.na(Wild_for_food)) %>%
   select(Year, Aquaculture, Wild_for_food)
 
-DT::datatable
-
 ```
+
+## Forecast production values
+
+The data only goes to 2015, but I want to include forecasted growth of these two sectors. The 2016 [State of the Worlds Fisheries and Aquaculture report](http://www.fao.org/publications/sofia/2016/en/) projects a 39% growth in Aquaculture production and just a 1% growth in Wild-Capture. To make this easy, I simply used the 2015 production values and set the 2025 values to 139% and 101% of those values. 
 
 ```{r}
 
@@ -89,7 +121,11 @@ plot_data <- data %>%
 
 ```
 
-# Static ggplot
+# Making the plot
+
+## Static ggplot
+
+Just plotting the data to see if it looks right.
 
 ```{r}
 
@@ -102,26 +138,35 @@ static_plot <- ggplot(plot_data, aes(x = time, y = y)) +
 static_plot
 ```
 
-# Animated 
+## Animate with `gganimate`
 
-```{r}
+Trying out gganimate and changing up the colors
+```{r, eval=F}
 
 dynam_plot <- ggplot(plot_data, aes(x = x, y = y, cumulative = TRUE, frame = time)) +
   geom_line(aes(color = id), show.legend = F) +
   labs(x = "Year",
        y = "Seafood Production (million tonnes)") +
-  theme_hc(bgcolor = "darkunica")
+  theme_hc() +
+  scale_y_continuous(breaks = seq(0, 100, by = 25)) +
+  scale_color_manual(values = c("#24757A", "#7FBAC0")) +
+  ylim(0, 100) +
+  theme_hc() 
 
-gganimate(dynam_plot, title_frame = F)
+gganimate(dynam_plot, filename = "fao_gganimate.gif", title_frame = F)
 
 ```
 
+![](fao_gganimate.gif)
+
 ## With `tweenr`
 
-```{r, fig.width = 6, fig.height = 6}
+To make the animation smoother, I'm using the `tweenr` package. By using the `tween_elements()` function, which in my understanding creates a bunch of in be"tween" points in the dataset, allowing the animated graph to look super smooth.
+
+```{r, fig.width = 6, fig.height = 6, eval=F}
 
 data_tween <- plot_data %>%
-  tween_elements(., "time", "id", "ease", nframes = 100) %>%
+  tween_elements(., "time", "id", "ease", nframes = 100) %>%   #using tweenr!
   mutate(year = round(time), id = .group) %>%
   left_join(plot_data) %>%
   mutate(period = ifelse(time < 2018, "current", "projected"))
@@ -147,4 +192,8 @@ tween_plot <- ggplot(data_tween, aes(x = x, y = y, frame = .frame, color = id)) 
 
 gganimate(tween_plot, title_frame = FALSE, interval = 0.05, "fao_aq_capture_fig.gif", ani.width = 800, ani.height = 500)
 ```
+
+![](fao_aq_capture_fig.gif)
+
+PERFECT!
 
