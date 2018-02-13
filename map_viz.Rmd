@@ -29,7 +29,7 @@ cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(255)) # rainbow color sc
 Data can be downloaded from [KnB](https://knb.ecoinformatics.org/#view/doi:10.5063/F1CF9N69)
 ```{r}
 
-raw_map <- raster("data/fish_spp_phi_constraints.tiff")
+raw_map <- raster("~/big/fish_spp_phi_constraints.tiff")
 world <- rnaturalearth::countries110
 
 plot(raw_map, box=F, axes=F, col = cols, colNA = "lightblue")
