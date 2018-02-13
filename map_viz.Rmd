@@ -18,8 +18,13 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
 
 library(raster)
+library(dplyr)
 library(RColorBrewer)
 library(sf)
+library(maps)
+#devtools::install_github("dkahle/ggmap")
+library(ggmap)
+library(rasterVis)
 
 #set colors for plotting
 cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(255)) # rainbow color scheme
@@ -32,6 +37,46 @@ Data can be downloaded from [KnB](https://knb.ecoinformatics.org/#view/doi:10.50
 raw_map <- raster("~/big/fish_spp_phi_constraints.tiff")
 world <- rnaturalearth::countries110
 
-plot(raw_map, box=F, axes=F, col = cols, colNA = "lightblue")
-plot(world, add=TRUE, border=grey(0.5), col="beige")
+ohi_map <- st_read(dsn = "~/github/ohiprep_v2018/globalprep/spatial/downres", "rgn_land_mol_low_res") %>%
+  mutate(rgn_nam = as.character(rgn_nam))
+st_crs(ohi_map) = 54009
+world <- st_transform(ohi_map, "+init=epsg:4326") %>%
+  filter(rgn_nam != "Antarctica") %>%
+  as('Spatial')
+
+par(mar = c(0,0,0,0))
+plot(raw_map, box=F, axes=F, col = cols, colNA = "lightsteelblue1", legend = T, horiz = T, bty='n')
+plot(world, add=TRUE, border=grey(0.5), col="antiquewhite")
+
+png(filename = "img/map.png", width = 600, height = 600)
+
+#using levelplot (I think the res is too bad)
+
+myTheme <- rasterTheme(region=cols)
+levelplot(raw_map, xlab=NULL, ylab=NULL, margin = FALSE, par.settings=myTheme, 
+          strip.background = list(col = 'transparent'),scales=list(draw=FALSE),
+          strip.border = list(col = 'transparent'),
+          colorkey=list(
+            space='bottom',                   
+            #labels=list(at=-5:5, font=4),
+            axis.line=list(col='black')       
+          )) + 
+  latticeExtra::layer(sp.polygons(world, col="gray"))
+
+levelplot(raw_map, 
+          maxpixels = 1e7,
+          margin=FALSE,                       # suppress marginal graphics
+          colorkey=list(
+            space='bottom',                   # plot legend at bottom
+            labels=list(at= 0:4, font=4)      # legend ticks and labels 
+          ),   
+          strip.background = list(col = 'transparent'),
+          strip.border = list(col = 'transparent'), 
+          par.settings=list(
+            axis.line=list(col='transparent') # suppress axes and legend outline
+          ),
+          scales=list(draw=FALSE),            # suppress axis labels
+          col.regions=cols,                   # colour ramp
+          at=seq(0, 4, len=10)) +           # colour ramp breaks
+  layer(sp.polygons(world, col = "gray", fill = "antiquewhite"))   
 ```
