@@ -14,7 +14,6 @@ library(gganimate)
 library(tweenr)
 library(ggthemes)
 library(tidyverse)
-library('rphylopic')
 ```
 
 Data for fish consumption.
@@ -30,8 +29,6 @@ data=rbind(a,b)
 # Basic barplot:
 ggplot(data, aes(x=group, y=values, fill=group)) + 
   geom_bar(stat='identity')
- 
-
 ```
 
 #tweenr
@@ -41,24 +38,33 @@ ggplot(data, aes(x=group, y=values, fill=group)) +
  
 
 # Interpolate data with tweenr
-ts <- list(a, b, a)
-tf <- tween_states(ts, tweenlength = 0.02, statelength = 0.001, ease = c('cubic-in-out'), nframes = 100)
-tf
+ts <- list(a, b)
+tf <- tween_states(ts, tweenlength = 0.02, statelength = 0.001, ease = c('cubic-in-out'), nframes = 50) %>%
+  mutate(.frame = ifelse(group == 1960, .frame, .frame+51))
+s <- tf %>%
+  filter(group == 1960) %>%
+  mutate(.frame = .frame + 51,
+         values = 9.6)
+
+tween_data <- tf %>%
+  bind_rows(s)
+
  
 # Make a barplot with frame
-p = ggplot(tf, aes(x=group, y=values, fill=group, frame= .frame)) + 
+p = ggplot(tween_data, aes(x=group, y=values, fill=group, frame= .frame)) + 
   geom_bar(stat='identity', position = "identity") +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.background = element_blank(), 
-        axis.line = element_line(colour = "black")) +
+        axis.line = element_line(colour = "black"),
+        axis.title.y = element_text(size=14),
+        axis.text.y = element_text( size=12),
+        axis.text.x = element_text(size = 14)) +
   xlab("") +
   ylab("Kilograms of fish per capita") +
   guides(fill=FALSE) +
- # scale_fill_manual(values = "grey") +
-  geom_text(family="OpenSansEmoji", size=10)
+  scale_fill_manual(values = c("#e88449","#24757A"))
   
-
 gganimate(p, interval = .1, title_frame = F, ani.width=480, ani.height=480, filename = "fishconsumption.gif")
 
 ```
