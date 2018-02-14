@@ -1,0 +1,107 @@
+---
+title: "Fish consumption"
+author: "Jamie Afflerbach"
+date: "2/13/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+library(ggplot2)
+library(gganimate)
+library(tweenr)
+library(ggthemes)
+library(tidyverse)
+library('rphylopic')
+```
+
+Data for fish consumption.
+
+I just create a dummy dataset with two rows and columns representing global fish consumption in 1960 and now.
+
+```{r data}
+
+data <- data.frame(year = c(1960, 1960, 2016, 2016),
+                   fish = c(0, 9.6, 0, 20.1)) 
+
+```
+
+# gganimate
+
+```{r}
+
+# get the patterns
+get_patterns <- function(id_blue, id_red, id_green){
+  blue <- clpattern(id = id_blue)
+  red <- clpattern(id = id_red)
+  green <- clpattern(id = id_green)
+  list(red, green, blue)
+}
+
+fish_pattern<-clpattern(2423702)
+
+```
+
+#tweenr
+
+```{r}
+
+plot_data <- data %>%
+  mutate(ease = "linear",
+         x = year) 
+
+data_tween <- plot_data %>%
+  tween_elements(., "fish", "year", "ease", nframes = 100) 
+
+
+tween_plot <- ggplot(data_tween, aes(x = x, y = fish)) +
+  geom_bar(stat = "identity") +
+  theme_bw()
+
+gganimate(tween_plot, title_frame = FALSE, interval = 0.05)
+
+```
+
+
+```{r}
+ 
+# Make 2 basic barplots
+a=data.frame(group=c("1960", "Now"), values=c(0, 0), frame=rep('a', 2))
+b=data.frame(group=c("1960", "Now"), values=c(9.6, 20.1), frame=rep('b', 2))
+data=rbind(a,b)	
+ 
+# Basic barplot:
+ggplot(a, aes(x=group, y=values, fill=group)) + 
+  geom_bar(stat='identity')
+ 
+# Interpolate data with tweenr
+ts <- list(a, b, a)
+tf <- tween_states(ts, tweenlength = 0.02, statelength = 0.001, ease = c('cubic-in-out'), nframes = 100)
+tf
+ 
+# Make a barplot with frame
+p = ggplot(tf, aes(x=group, y=values, fill=group, frame= .frame)) + 
+  geom_bar(stat='identity', position = "identity") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black")) +
+  xlab("") +
+  ylab("Kilograms of fish per capita") +
+  guides(fill=FALSE) +
+ # scale_fill_manual(values = "grey") +
+  geom_text(family="OpenSansEmoji", size=10)
+  
+
+gganimate(p, interval = .1, title_frame = F, ani.width=480, ani.height=480, filename = "fishconsumption.gif")
+
+```
+
+
+
+
+
+
+
