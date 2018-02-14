@@ -38,8 +38,7 @@ raw_map <- raster("~/big/fish_spp_phi_constraints.tiff")
 world <- rnaturalearth::countries110
 
 pdf("img/map.pdf", width = 6, height = 5)
-
-par(mar = c(0.1,0,0.1,0))
+par(mar = c(0,1,1,1))
 plot(raw_map, box=F, axes=F, col = cols, colNA = "lightsteelblue1", legend = T, horiz = T, bty='n',
      legend.shrink = 0.9, 
      axis.args=list(at=c(2.1, 3.5), 
@@ -50,7 +49,7 @@ plot(raw_map, box=F, axes=F, col = cols, colNA = "lightsteelblue1", legend = T, 
      legend.args = list(text='Finfish Growth Potential'))
 plot(world, add=TRUE, border=grey(0.5), col="antiquewhite")
 
-dev.off() 
+dev.off()
 ```
 
 
