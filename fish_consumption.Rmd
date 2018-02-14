@@ -63,12 +63,16 @@ p = ggplot(tween_data, aes(x=group, y=values, fill=group, frame= .frame)) +
   xlab("") +
   ylab("Kilograms of fish per capita") +
   guides(fill=FALSE) +
-  scale_fill_manual(values = c("#e88449","#24757A"))
+  scale_fill_manual(values = c("#7FBAC0","#7FBAC0"))
   
 gganimate(p, interval = .1, title_frame = F, ani.width=480, ani.height=480, filename = "fishconsumption.gif")
 
 ```
 
+
+# Add figure
+
+Using the magick package can we add a figure to the left of the plot?
 
 
 
