@@ -36,7 +36,6 @@ ggplot(data, aes(x=group, y=values, fill=group)) +
 
 ```{r}
  
-
 # Interpolate data with tweenr
 ts <- list(a, b)
 tf <- tween_states(ts, tweenlength = 0.02, statelength = 0.001, ease = c('cubic-in-out'), nframes = 50) %>%
@@ -59,13 +58,14 @@ p = ggplot(tween_data, aes(x=group, y=values, fill=group, frame= .frame)) +
         axis.line = element_line(colour = "black"),
         axis.title.y = element_text(size=14),
         axis.text.y = element_text( size=12),
-        axis.text.x = element_text(size = 14)) +
+        axis.text.x = element_text(size = 14),
+        plot.margin=unit(c(0.5,0.1,0.1,6),"cm")) +
   xlab("") +
   ylab("Kilograms of fish per capita") +
   guides(fill=FALSE) +
   scale_fill_manual(values = c("#7FBAC0","#7FBAC0"))
   
- gganimate(p, interval = .1, title_frame = F, ani.width=480, ani.height=480, filename = "fishconsumption.gif")
+ gganimate(p, interval = .1, title_frame = F, ani.width=600, ani.height=480, filename = "fishconsumption.gif")
 
 ```
 
@@ -77,22 +77,15 @@ Using the magick package can we add a figure to the left of the plot?
 ```{r}
 
 woman <- image_read("img/Woman_Icon.png")
-woman <- image_scale(woman, "200")
+woman <- image_scale(woman, "300")
 
-fig <- image_graph(width = 600, height = 600, res = 96)
-p
+gif <- image_read("fishconsumption.gif")
 
-out <- image_composite(woman, fig)
-print(out)
-
-p+
-grid.raster(woman)
-
-
-out <- woman %>%
-  image_scale("200")
-
-final_plot <- image_append(image_scale(c(p, woman), "500"), stack = TRUE)
-
-
+out <- image_composite(gif, woman, offset = "-70+70")
+image_write(out, "fishconsumption_plus_lady.gif")
 ```
+
+
+
+
+
